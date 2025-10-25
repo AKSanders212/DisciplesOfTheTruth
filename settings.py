@@ -5,8 +5,10 @@
     File: settings.py
 """
 import pygame
+import graphics
 
 pygame.init()
+
 
 class Engine:
     def __init__(self):
@@ -19,6 +21,11 @@ class Engine:
         self.title = title
         self.bg_color = bg_color
         self.game_screen = pygame.display.set_mode((800, 600))
+
+        # Load a single 16x16 sprite from the spritesheet at (0, 0)
+        sprite = graphics.Sprites()
+        rect = pygame.Rect(0, 0, 16, 16)
+        player = sprite.LoadSprite("graphics/sprites/male_chr01_sheet.png", rect)
 
         # Game loop variable
         running = True
@@ -34,6 +41,5 @@ class Engine:
 
             # Fill the screen with bg_color and flip the display to update it
             self.game_screen.fill(bg_color)
+            self.game_screen.blit(player, (50, 50))
             pygame.display.flip()
-
-
