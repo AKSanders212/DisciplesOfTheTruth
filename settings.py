@@ -8,7 +8,7 @@ import pygame
 import graphics
 
 pygame.init()
-
+clock = pygame.time.Clock()
 
 class Engine:
     def __init__(self):
@@ -21,11 +21,9 @@ class Engine:
         self.title = title
         self.bg_color = bg_color
         self.game_screen = pygame.display.set_mode((800, 600))
-
-        # Load a single 16x16 sprite from the spritesheet at (0, 0)
-        sprite = graphics.Sprites()
-        rect = pygame.Rect(0, 0, 16, 16)
-        player = sprite.LoadSprite("graphics/sprites/male_chr01_sheet.png", rect)
+        player_image = pygame.image.load("graphics/sprites/male_chr01_sheet.png").convert_alpha()
+        player_sprite = graphics.Sprites(player_image)
+        player = graphics.Player(player_sprite, x=50, y=50, frame_width=16, frame_height=16, scale=2)
 
         # Game loop variable
         running = True
@@ -39,7 +37,15 @@ class Engine:
                 if event.type == pygame.QUIT:
                     running = False
 
+            # Updates the players movement
+            keys = pygame.key.get_pressed()
+            player.update(keys)
+
             # Fill the screen with bg_color and flip the display to update it
             self.game_screen.fill(bg_color)
-            self.game_screen.blit(player, (50, 50))
+            self.game_screen.blit(player.image, player.rect)
             pygame.display.flip()
+
+            clock.tick(60) # FPS
+
+        pygame.quit()
