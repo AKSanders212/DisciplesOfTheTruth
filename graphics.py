@@ -28,8 +28,9 @@ class Sprites:
 
 class Player(pygame.sprite.Sprite):
     """
-        The Player class that is responsible for handling the player and its animations, movement, etc.
+        The Player class is responsible for handling the player and its animations, movement, etc.
     """
+
     def __init__(self, spritesheet, x, y, frame_width, frame_height, scale):
         super().__init__()
         self.spritesheet = spritesheet
@@ -44,11 +45,11 @@ class Player(pygame.sprite.Sprite):
             "down": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
                                                  scale, 0) for i in range(4)],
             "right": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                                 scale, 1) for i in range(4)],
+                                                  scale, 1) for i in range(4)],
             "left": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
                                                  scale, 2) for i in range(4)],
             "up": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                                 scale, 3) for i in range(4)],
+                                               scale, 3) for i in range(4)],
         }
 
         self.image = self.animations["down"][0]

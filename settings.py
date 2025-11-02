@@ -6,9 +6,12 @@ File: settings.py
 """
 import pygame
 import graphics
+import audio
 
 pygame.init()
 clock = pygame.time.Clock()
+# For testing the player and camera
+grid_background = pygame.Surface((1600, 1200))
 
 
 class Camera:
@@ -30,6 +33,17 @@ class Camera:
         """Center camera on target"""
         self.camera_rect.centerx = target.rect.centerx
         self.camera_rect.centery = target.rect.centery
+
+
+def TestGrid(background):
+    background.fill((100, 200, 100))
+    for x in range(0, 1600, 64):
+        pygame.draw.line(background, (80, 180, 80), (x, 0), (x, 1200))
+    for y in range(0, 1200, 64):
+        pygame.draw.line(background, (80, 180, 80), (0, y), (1600, y))
+
+    # Make sure to return the background, so it can be used
+    return background
 
 
 class Engine:
@@ -54,12 +68,13 @@ class Engine:
         player_camera = Camera(800, 600, zoom=2.0)  # start zoomed in 2x
 
         # Test grid for movement - replace with a level scene background
-        background = pygame.Surface((1600, 1200))
-        background.fill((100, 200, 100))
-        for x in range(0, 1600, 64):
-            pygame.draw.line(background, (80, 180, 80), (x, 0), (x, 1200))
-        for y in range(0, 1200, 64):
-            pygame.draw.line(background, (80, 180, 80), (0, y), (1600, y))
+        TestGrid(grid_background)
+
+        # Set the background music for the game (this will be replaced to be set for the current scene)
+        # A scene manager class will handle all graphics, audio, physics, scripts, etc.
+        audio_player = audio.MusicPlayer()
+        audio_player.load_music("audio/bg_music/02_MysticForest.wav")
+        audio_player.play_music(-1)
 
         running = True
         while running:
@@ -83,8 +98,9 @@ class Engine:
             self.game_screen.fill(self.bg_color)
 
             # Draw background with zoom + camera offset
-            bg_rect = player_camera.apply(background.get_rect())
-            scaled_bg = pygame.transform.scale(background, (int(1600 * player_camera.zoom), int(1200 * player_camera.zoom)))
+            bg_rect = player_camera.apply(grid_background.get_rect())
+            scaled_bg = pygame.transform.scale(grid_background,
+                                               (int(1600 * player_camera.zoom), int(1200 * player_camera.zoom)))
             self.game_screen.blit(scaled_bg, bg_rect)
 
             # Draw player (scale + offset)
@@ -97,5 +113,9 @@ class Engine:
 
             pygame.display.flip()
             clock.tick(60)
+
+        if not running:
+            audio_player.stop_music()
+            audio_player.quit_music()
 
         pygame.quit()
