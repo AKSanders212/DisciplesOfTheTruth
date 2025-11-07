@@ -10,8 +10,59 @@ import audio
 
 pygame.init()
 clock = pygame.time.Clock()
-# For testing the player and camera
-grid_background = pygame.Surface((1600, 1200))
+
+
+class SceneManager:
+    def __init__(self, screen, surface, background, player, musicplayer, track, camera):
+        self.screen = screen
+        self.surface = surface
+        self.background = background
+        self.player = player
+        self.musicplayer = musicplayer
+        self.track = track
+        self.camera = camera
+
+    def load_scene(self, screen, surface, background, player,
+                   camera):
+        """Loads a new scene"""
+        # clear the old background
+        self.clear_background(screen)
+
+        # load a new background
+        surface.fill(background)
+
+        # Update camera position
+        camera.update(player)
+
+        # Draw background with zoom + camera offset
+        zoom_rect = camera.apply(surface.get_rect())
+        zoomed_bg = pygame.transform.scale(surface,
+                                           (int(1600 * camera.zoom), int(1200 * camera.zoom)))
+
+        # Draws a new zoomed bg surface with a zoomed rect space
+        screen.blit(zoomed_bg, zoom_rect)
+
+        # Draw player (scale + offset)
+        player_draw_rect = camera.apply(player.rect)
+        scaled_image = pygame.transform.scale(
+            player.image,
+            (int(player.rect.width * camera.zoom), int(player.rect.height * camera.zoom))
+        )
+
+        # Draws to the screen the scaled background image with the camera applied to the player_rect
+        screen.blit(scaled_image, player_draw_rect)
+
+        return screen, surface
+
+    def clear_background(self, screen):
+        """Clears the previous screen from the previous scene"""
+        screen.fill((0, 0, 0))  # fills the screen with black color
+
+        return screen
+
+    def scene_music(self):
+        self.musicplayer.load_music(self.track)
+        self.musicplayer.play_music(-1)
 
 
 class Camera:
@@ -59,6 +110,9 @@ class Engine:
         self.game_screen = pygame.display.set_mode((800, 600))
         pygame.display.set_caption(self.title)
 
+        # background
+        background = (100, 200, 100)
+
         # Load player
         player_image = pygame.image.load("graphics/sprites/male_chr01_sheet.png").convert_alpha()
         player_sprite = graphics.Sprites(player_image)
@@ -67,14 +121,21 @@ class Engine:
         # Create camera
         player_camera = Camera(800, 600, zoom=2.0)  # start zoomed in 2x
 
-        # Test grid for movement - replace with a level scene background
-        TestGrid(grid_background)
+        # Surface used for zoomed backgrounds
+        surface = pygame.Surface((1600, 1200))
 
-        # Set the background music for the game (this will be replaced to be set for the current scene)
-        # A scene manager class will handle all graphics, audio, physics, scripts, etc.
+        # audio player for playing music
         audio_player = audio.MusicPlayer()
-        audio_player.load_music("audio/bg_music/02_MysticForest.wav")
-        audio_player.play_music(-1)
+
+        # Music track (forest theme)
+        track = "audio/bg_music/02_MysticForest.wav"
+
+        # New scene manager
+        scene01 = SceneManager(self.game_screen, surface, background, player, audio_player,
+                               track, player_camera)
+
+        # loads music for first scene
+        scene01.scene_music()
 
         running = True
         while running:
@@ -91,25 +152,8 @@ class Engine:
             if keys[pygame.K_e]:
                 player_camera.zoom = max(player_camera.zoom - 0.02, 0.5)
 
-            # Update camera position
-            player_camera.update(player)
-
-            # Draw world
-            self.game_screen.fill(self.bg_color)
-
-            # Draw background with zoom + camera offset
-            bg_rect = player_camera.apply(grid_background.get_rect())
-            scaled_bg = pygame.transform.scale(grid_background,
-                                               (int(1600 * player_camera.zoom), int(1200 * player_camera.zoom)))
-            self.game_screen.blit(scaled_bg, bg_rect)
-
-            # Draw player (scale + offset)
-            player_draw_rect = player_camera.apply(player.rect)
-            scaled_image = pygame.transform.scale(
-                player.image,
-                (int(player.rect.width * player_camera.zoom), int(player.rect.height * player_camera.zoom))
-            )
-            self.game_screen.blit(scaled_image, player_draw_rect)
+            # Load the scene and its contents
+            scene01.load_scene(self.game_screen, surface, background, player, player_camera)
 
             pygame.display.flip()
             clock.tick(60)
