@@ -67,33 +67,39 @@ class Player(pygame.sprite.Sprite):
         self.speed = 3.0  # pixels per frame
 
     def update(self, keys):
+        """Update player position, direction, and animation based on input."""
+        dx = 0
+        dy = 0
         moving = False
 
+        # --- Movement input ---
         if keys[pygame.K_LEFT]:
-            self.pos_x -= self.speed
+            dx -= self.speed
             self.direction = "left"
             moving = True
-
         if keys[pygame.K_RIGHT]:
-            self.pos_x += self.speed
+            dx += self.speed
             self.direction = "right"
             moving = True
-
+        if keys[pygame.K_UP]:
+            dy -= self.speed
+            self.direction = "up"
+            moving = True
         if keys[pygame.K_DOWN]:
-            self.pos_y += self.speed
+            dy += self.speed
             self.direction = "down"
             moving = True
 
-        if keys[pygame.K_UP]:
-            self.pos_y -= self.speed
-            self.direction = "up"
-            moving = True
-
-        # Update integer rect position from floats
+        # --- Apply movement (in two passes for proper collision resolution) ---
+        # Move horizontally first
+        self.pos_x += dx
         self.rect.x = int(self.pos_x)
+
+        # Then move vertically
+        self.pos_y += dy
         self.rect.y = int(self.pos_y)
 
-        # Animation update
+        # --- Animation update ---
         if moving:
             self.frame_index += self.animation_speed
             if self.frame_index >= len(self.animations[self.direction]):

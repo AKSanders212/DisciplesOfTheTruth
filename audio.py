@@ -1,3 +1,9 @@
+"""
+Project: Disciples Of The Truth (Christian 2D RPG)
+Author: Aaron Keith Sanders
+Date: 8 November 2025
+File: audio.py
+"""
 import pygame
 
 pygame.init()
