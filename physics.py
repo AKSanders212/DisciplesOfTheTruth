@@ -15,12 +15,21 @@ class BoxCollider:
 
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
+        self.debug = False   # Each collider starts with debug OFF
+
+    def enable_debug(self, value: bool):
+        """Enable or disable THIS collider's debug outline."""
+        self.debug = value
 
     def draw(self, surface, camera=None, color=(255, 0, 0)):
-        """For drawing debug based box collisions with a default color of red"""
+        """Draws the debug collider ONLY if enabled."""
+        if not self.debug:
+            return
+
         draw_rect = self.rect
         if camera:
             draw_rect = camera.apply(self.rect)
+
         pygame.draw.rect(surface, color, draw_rect, 2)
 
 
@@ -31,6 +40,9 @@ class Physics:
         self.colliders = []
         self.world_rect = pygame.Rect(0, 0, world_width, world_height)
 
+    def get_physics_world(self):
+        return self.world_rect
+
     def add_collider(self, collider: BoxCollider):
         """Adds a BoxCollider to the array of physics colliders"""
         self.colliders.append(collider)
@@ -38,6 +50,11 @@ class Physics:
     def clear_colliders(self):
         """Clears the array of colliders"""
         self.colliders.clear()
+
+    def set_debug(self, value: bool):
+        """Enable or disable debug drawing for ALL colliders."""
+        for collider in self.colliders:
+            collider.enable_debug(value)
 
     def handle_collisions(self, player):
         """Keeps the player sprite within the game world boundaries and resolves object collisions"""
@@ -64,31 +81,19 @@ class Physics:
         dx = player.rect.centerx - collider.rect.centerx
         dy = player.rect.centery - collider.rect.centery
 
-        # variables that contain where player overlap with colliders occur
         overlap_x = (player.rect.width / 2 + collider.rect.width / 2) - abs(dx)
         overlap_y = (player.rect.height / 2 + collider.rect.height / 2) - abs(dy)
 
-        # Determine which axis to resolve on (smallest overlap first)
         if overlap_x < overlap_y:
-            # --- Horizontal collision ---
             if dx > 0:
-                # Player hit from the right
                 player.rect.left = collider.rect.right
             else:
-                # Player hit from the left
                 player.rect.right = collider.rect.left
-
-            # Sync X position (prevents teleporting)
             player.pos_x = player.rect.x
 
         else:
-            # --- Vertical collision ---
             if dy > 0:
-                # Player hit from below
                 player.rect.top = collider.rect.bottom
             else:
-                # Player hit from above
                 player.rect.bottom = collider.rect.top
-
-            # Sync Y position
             player.pos_y = player.rect.y

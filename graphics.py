@@ -5,6 +5,8 @@
     File: graphics.py
 """
 import pygame
+import physics
+from camera import Camera
 
 pygame.init()
 
@@ -40,39 +42,28 @@ class Player(pygame.sprite.Sprite):
         self.image = None
         self.direction = "down"
 
-        # Animation lists (rows: down=0, left=1, right=2, up=3)
+        # Load animations
         self.animations = {
-            "down": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                                 scale, 0) for i in range(4)],
-            "right": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                                  scale, 1) for i in range(4)],
-            "left": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                                 scale, 2) for i in range(4)],
-            "up": [self.spritesheet.LoadSprite(i, frame_width, frame_height,
-                                               scale, 3) for i in range(4)],
+            "down": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 0) for i in range(4)],
+            "right": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 1) for i in range(4)],
+            "left": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 2) for i in range(4)],
+            "up": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 3) for i in range(4)],
         }
 
         self.image = self.animations["down"][0]
         self.rect = self.image.get_rect(topleft=(x, y))
 
-        # Keep float positions for smoother movement
         self.pos_x = float(x)
         self.pos_y = float(y)
-
-        # Animation control
         self.frame_index = 0
-        self.animation_speed = 0.15  # much faster
+        self.animation_speed = 0.15
+        self.speed = 3.0
 
-        # Movement
-        self.speed = 3.0  # pixels per frame
-
-    def update(self, keys):
-        """Update player position, direction, and animation based on input."""
-        dx = 0
-        dy = 0
+    def update(self, keys, camera):
+        dx, dy = 0, 0
         moving = False
 
-        # --- Movement input ---
+        # Movement input
         if keys[pygame.K_LEFT]:
             dx -= self.speed
             self.direction = "left"
@@ -90,16 +81,19 @@ class Player(pygame.sprite.Sprite):
             self.direction = "down"
             moving = True
 
-        # --- Apply movement (in two passes for proper collision resolution) ---
-        # Move horizontally first
+        # Camera zoom controls
+        if keys[pygame.K_q]:
+            camera.zoom_in()
+        if keys[pygame.K_e]:
+            camera.zoom_out()
+
+        # Apply movement
         self.pos_x += dx
         self.rect.x = int(self.pos_x)
-
-        # Then move vertically
         self.pos_y += dy
         self.rect.y = int(self.pos_y)
 
-        # --- Animation update ---
+        # Update animation
         if moving:
             self.frame_index += self.animation_speed
             if self.frame_index >= len(self.animations[self.direction]):
@@ -108,3 +102,81 @@ class Player(pygame.sprite.Sprite):
             self.frame_index = 0
 
         self.image = self.animations[self.direction][int(self.frame_index)]
+
+
+class Tiles:
+    """
+    The Tiles class handles loading tiles from a tileset, optionally creating
+    physics colliders and drawing visual debug colliders.
+    """
+
+    def __init__(self, image, physics_world, has_physics=True, debug_collider=True):
+        """
+        image : pygame.Surface (tileset)
+        has_physics : bool — will or will not contain a physics collider
+        debug_collider : bool - debug_colliders are either red for testing or transparent for tested
+        """
+        self.tileset = image
+        self.has_physics = has_physics
+        self.debug_collider = debug_collider
+        self.tile_physics = physics_world
+
+    def set_collider_visible(self, visible: bool):
+        """
+        Turn collider debug visibility ON (red) or OFF (transparent).
+        """
+        self.debug_collider = visible
+
+    def enable_physics(self, enabled: bool):
+        """
+        Turn physics colliders on or off.
+        """
+        self.has_physics = enabled
+
+    def LoadTile(self, frame, width, height, scale, row):
+        """
+        Extract a tile from the tileset and return a scaled surface.
+        """
+
+        # Extract original tile
+        tile = pygame.Surface((width, height), pygame.SRCALPHA)
+        tile.blit(self.tileset, (0, 0), (frame * width, row * height, width, height))
+
+        # Scale the tile
+        scaled_w = width * scale
+        scaled_h = height * scale
+
+        tile = pygame.transform.scale(tile, (scaled_w, scaled_h))
+
+        return tile, scaled_w, scaled_h
+
+    def blit_tile(self, surface, x, y, frame, width, height, scale, row, color=(255, 0, 0)):
+        """
+        Draw a tile to the screen. Apply collider if enabled.
+        """
+
+        # load tile surface
+        tile, tw, th = self.LoadTile(frame, width, height, scale, row)
+        surface.blit(tile, (x, y))
+
+        # apply colliders if physics is enabled
+        if self.has_physics:
+            self._apply_collider(x, y, tw, th, surface, color)
+
+        return tile
+
+    def _apply_collider(self, x, y, width, height, surface, color):
+        """
+        Create a physics collider matching the tile and draw a debug collider
+        (either red or invisible).
+        """
+
+        collider = physics.BoxCollider(x, y, width, height)
+        collider.enable_debug(self.debug_collider)
+        self.tile_physics.add_collider(collider)
+
+        if self.debug_collider:
+            pygame.draw.rect(surface, color, (x, y, width, height), 1)
+        else:
+            # Transparent physics collder
+            pass

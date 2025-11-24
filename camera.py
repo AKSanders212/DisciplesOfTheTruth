@@ -14,6 +14,16 @@ class Camera:
         self.height = height
         self.zoom = zoom
 
+    def zoom_in(self):
+        if self.zoom < 3:
+            self.zoom += 0.1
+        return self.zoom
+
+    def zoom_out(self):
+        if self.zoom >= 1:
+            self.zoom -= 0.1
+        return self.zoom
+
     def apply(self, rect):
         """Convert world rect to screen rect using camera position and zoom."""
         x = (rect.centerx - self.camera_rect.centerx) * self.zoom + self.width // 2
