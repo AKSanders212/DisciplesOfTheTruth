@@ -14,6 +14,10 @@ class BoxCollider:
     """Responsible for handling box collisions"""
 
     def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
         self.rect = pygame.Rect(x, y, width, height)
         self.debug = False   # Each collider starts with debug OFF
 
@@ -26,11 +30,12 @@ class BoxCollider:
         if not self.debug:
             return
 
-        draw_rect = self.rect
-        if camera:
-            draw_rect = camera.apply(self.rect)
+        rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        pygame.draw.rect(surface, color, draw_rect, 2)
+        # apply camera transformation
+        screen_rect = camera.apply(rect)
+
+        pygame.draw.rect(surface, (255, 0, 0), screen_rect, 1)
 
 
 class Physics:

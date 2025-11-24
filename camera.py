@@ -5,7 +5,9 @@ Date: 8 November 2025
 File: physics.py
 """
 import pygame
+
 pygame.init()
+
 
 class Camera:
     def __init__(self, width, height, zoom=1.0):

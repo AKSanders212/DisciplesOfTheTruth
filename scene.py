@@ -46,7 +46,13 @@ class Scene01(Scene):
         self.physics = physics.Physics(world_width=1600, world_height=1200)
         self.audio_player = audio.MusicPlayer()
         self.camera = camera.Camera(800, 600, zoom=2.0)
-        self.flowers = graphics.Tiles("graphics/tiles/flowerbush.png", True)
+
+        # -- Tiles --
+        tileset_image = pygame.image.load("graphics/tiles/flowerbush.png").convert_alpha()
+        self.tiles = graphics.Tiles(tileset_image, physics_world=self.physics)
+        self.flower_tile = self.tiles.create_tile(
+            x=100, y=150, frame=0, width=16, height=16, scale=1, row=0
+        )
 
         # --- Player setup ---
         player_image = pygame.image.load("graphics/sprites/male_chr01_sheet.png").convert_alpha()
@@ -77,16 +83,6 @@ class Scene01(Scene):
             debug_collider=True
         )
 
-        # Ensures that the colliders are visible
-        self.tiles.set_collider_visible(True)
-        self.flowers.set_collider_visible(True)
-
-        # self.flowers.set_collider_visible(False)
-        # self.tiles.set_collider_visible(False)
-
-        # Turn off red boxes at runtime:
-        # tiles.set_collider_visible(False)
-
         # Disable physics entirely:
         # tiles.enable_physics(False)
 
@@ -109,25 +105,26 @@ class Scene01(Scene):
         self.camera.update(self.player)
 
     def draw(self):
-        # clears the background
-        self.surface.fill(self.background_color)
+        # clear screen
+        self.screen.fill((0, 0, 0))
 
-        # Draws a tile, first, with a collider for testing
-        self.tiles.blit_tile(self.surface, x=100, y=150,
-                             frame=0, width=16, height=16,
-                             scale=1, row=0)
+        # next I apply the correct background color for the scene01 zone map - green
+        self.screen.fill(self.background_color)
 
-        self.surface.blit(self.player.image, self.player.rect)
+        # next I draw the tiles or the map
+        self.flower_tile.draw(self.screen, self.camera)
 
+        # then I handle drawing the player
+        player_screen_rect = self.camera.apply(self.player.rect)
+        self.screen.blit(self.player.image, player_screen_rect)
+
+        # then the physics colliders if any
         for collider in self.physics.colliders:
-            collider.draw(self.surface, camera=self.camera)
+            collider_rect = pygame.Rect(
+                collider.x, collider.y, collider.width, collider.height
+            )
+            screen_rect = self.camera.apply(collider_rect)
+            pygame.draw.rect(self.screen, (255, 0, 0), screen_rect, 1)
 
-        # camera zoom is applied after rendering everything first!
-        zoomed_surface = pygame.transform.scale(
-            self.surface,
-            (int(1600 * self.camera.zoom), int(1200 * self.camera.zoom))
-        )
-
-        zoom_rect = self.camera.apply(self.surface.get_rect())
-
-        self.screen.blit(zoomed_surface, zoom_rect)
+        # lastly, I flip the display
+        pygame.display.flip()

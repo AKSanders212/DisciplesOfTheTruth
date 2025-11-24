@@ -104,79 +104,58 @@ class Player(pygame.sprite.Sprite):
         self.image = self.animations[self.direction][int(self.frame_index)]
 
 
+class TileInstance:
+    """Represents a single tile in the world"""
+
+    def __init__(self, x, y, width, height, image, physics_world=None, debug_collider=True):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.image = image
+
+        # Add collider if a physics world is provided
+        self.collider = None
+        if physics_world:
+            self.collider = physics.BoxCollider(x, y, width, height)
+            self.collider.enable_debug(debug_collider)
+            physics_world.add_collider(self.collider)
+
+    def draw(self, surface, camera: Camera):
+        # Draw the tile
+        rect = pygame.Rect(self.x, self.y, self.width, self.height)
+        screen_rect = camera.apply(rect)
+        surface.blit(self.image, screen_rect)
+
+        # Draw debug collider if enabled
+        if self.collider and self.collider.debug:
+            pygame.draw.rect(surface, (255, 0, 0), screen_rect, 1)
+
+
 class Tiles:
-    """
-    The Tiles class handles loading tiles from a tileset, optionally creating
-    physics colliders and drawing visual debug colliders.
-    """
-
-    def __init__(self, image, physics_world, has_physics=True, debug_collider=True):
-        """
-        image : pygame.Surface (tileset)
-        has_physics : bool — will or will not contain a physics collider
-        debug_collider : bool - debug_colliders are either red for testing or transparent for tested
-        """
-        self.tileset = image
-        self.has_physics = has_physics
+    """Responsible for creating and managing tile instances"""
+    def __init__(self, tileset_image, physics_world=None, has_physics=True, debug_collider=True):
+        self.tileset = tileset_image
+        self.physics_world = physics_world if has_physics else None
         self.debug_collider = debug_collider
-        self.tile_physics = physics_world
-
-    def set_collider_visible(self, visible: bool):
-        """
-        Turn collider debug visibility ON (red) or OFF (transparent).
-        """
-        self.debug_collider = visible
-
-    def enable_physics(self, enabled: bool):
-        """
-        Turn physics colliders on or off.
-        """
-        self.has_physics = enabled
 
     def LoadTile(self, frame, width, height, scale, row):
-        """
-        Extract a tile from the tileset and return a scaled surface.
-        """
-
-        # Extract original tile
+        """Extract and scale a tile from the tileset"""
         tile = pygame.Surface((width, height), pygame.SRCALPHA)
         tile.blit(self.tileset, (0, 0), (frame * width, row * height, width, height))
-
-        # Scale the tile
         scaled_w = width * scale
         scaled_h = height * scale
+        return pygame.transform.scale(tile, (scaled_w, scaled_h)), scaled_w, scaled_h
 
-        tile = pygame.transform.scale(tile, (scaled_w, scaled_h))
-
-        return tile, scaled_w, scaled_h
-
-    def blit_tile(self, surface, x, y, frame, width, height, scale, row, color=(255, 0, 0)):
-        """
-        Draw a tile to the screen. Apply collider if enabled.
-        """
-
-        # load tile surface
-        tile, tw, th = self.LoadTile(frame, width, height, scale, row)
-        surface.blit(tile, (x, y))
-
-        # apply colliders if physics is enabled
-        if self.has_physics:
-            self._apply_collider(x, y, tw, th, surface, color)
-
-        return tile
-
-    def _apply_collider(self, x, y, width, height, surface, color):
-        """
-        Create a physics collider matching the tile and draw a debug collider
-        (either red or invisible).
-        """
-
-        collider = physics.BoxCollider(x, y, width, height)
-        collider.enable_debug(self.debug_collider)
-        self.tile_physics.add_collider(collider)
-
-        if self.debug_collider:
-            pygame.draw.rect(surface, color, (x, y, width, height), 1)
-        else:
-            # Transparent physics collder
-            pass
+    def create_tile(self, x, y, frame, width, height, scale, row):
+        """Create a TileInstance with optional physics"""
+        tile_image, tw, th = self.LoadTile(frame, width, height, scale, row)
+        return TileInstance(
+            x=x,
+            y=y,
+            width=tw,
+            height=th,
+            image=tile_image,
+            physics_world=self.physics_world,
+            debug_collider=self.debug_collider
+        )
