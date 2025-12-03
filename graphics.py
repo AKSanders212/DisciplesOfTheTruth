@@ -5,6 +5,7 @@
     File: graphics.py
 """
 import pygame
+import random
 import physics
 from camera import Camera
 
@@ -12,35 +13,22 @@ pygame.init()
 
 
 class Sprites:
-    """The Sprites class handles loading sprites and spritesheets"""
-
     def __init__(self, image):
         self.spritesheet = image
 
     def LoadSprite(self, frame, width, height, scale, row):
-        """
-            Loads a sprite from a spritesheet based on its x, y and
-            its width, height selection
-        """
         image = pygame.Surface((width, height), pygame.SRCALPHA)
-        image.blit(self.spritesheet, (0, 0), (frame * width, row * height,
-                                              width, height))
+        image.blit(self.spritesheet, (0, 0),
+                   (frame * width, row * height, width, height))
         return pygame.transform.scale(image, (width * scale, height * scale))
 
 
 class Player(pygame.sprite.Sprite):
-    """
-        The Player class is responsible for handling the player and its animations, movement, etc.
-    """
-
     def __init__(self, spritesheet, x, y, frame_width, frame_height, scale):
         super().__init__()
         self.spritesheet = spritesheet
         self.frame_height = frame_height
         self.scale = scale
-        self.animations = None
-        self.image = None
-        self.direction = "down"
 
         # Load animations
         self.animations = {
@@ -50,52 +38,124 @@ class Player(pygame.sprite.Sprite):
             "up": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 3) for i in range(4)],
         }
 
+        self.direction = "down"
         self.image = self.animations["down"][0]
         self.rect = self.image.get_rect(topleft=(x, y))
 
         self.pos_x = float(x)
         self.pos_y = float(y)
         self.frame_index = 0
-        self.animation_speed = 0.15
-        self.speed = 3.0
+        self.animation_speed = 6  # frames per second
+        self.speed = 150.0        # pixels per second
 
-    def update(self, keys, camera):
+    def update(self, keys, camera, dt):
         dx, dy = 0, 0
         moving = False
 
-        # Movement input
+        # Movement
         if keys[pygame.K_LEFT]:
-            dx -= self.speed
+            dx -= 1
             self.direction = "left"
             moving = True
         if keys[pygame.K_RIGHT]:
-            dx += self.speed
+            dx += 1
             self.direction = "right"
             moving = True
         if keys[pygame.K_UP]:
-            dy -= self.speed
+            dy -= 1
             self.direction = "up"
             moving = True
         if keys[pygame.K_DOWN]:
-            dy += self.speed
+            dy += 1
             self.direction = "down"
             moving = True
 
-        # Camera zoom controls
-        if keys[pygame.K_q]:
-            camera.zoom_in()
-        if keys[pygame.K_e]:
-            camera.zoom_out()
+        # Normalize diagonal movement
+        if dx != 0 and dy != 0:
+            dx *= 0.7071
+            dy *= 0.7071
 
-        # Apply movement
-        self.pos_x += dx
+        # Apply dt-based movement
+        self.pos_x += dx * self.speed * dt
+        self.pos_y += dy * self.speed * dt
         self.rect.x = int(self.pos_x)
-        self.pos_y += dy
         self.rect.y = int(self.pos_y)
 
-        # Update animation
+        # Animation update
         if moving:
-            self.frame_index += self.animation_speed
+            self.frame_index += self.animation_speed * dt
+            if self.frame_index >= len(self.animations[self.direction]):
+                self.frame_index = 0
+        else:
+            self.frame_index = 0
+
+        self.image = self.animations[self.direction][int(self.frame_index)]
+
+
+class NPC(pygame.sprite.Sprite):
+    def __init__(self, spritesheet, x, y, frame_width, frame_height, scale, chartype):
+        super().__init__()
+        self.spritesheet = spritesheet
+
+        # Animations
+        self.animations = {
+            "down": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 0) for i in range(4)],
+            "right": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 1) for i in range(4)],
+            "left": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 2) for i in range(4)],
+            "up": [self.spritesheet.LoadSprite(i, frame_width, frame_height, scale, 3) for i in range(4)],
+        }
+
+        self.direction = "down"
+        self.image = self.animations["down"][0]
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+        self.pos_x = float(x)
+        self.pos_y = float(y)
+        self.dx = 0
+        self.dy = 0
+
+        self.frame_index = 0
+        self.animation_speed = 6     # frames per second
+        self.speed = 60.0            # pixels per second
+        self.move_timer = 0
+        self.move_interval = 1.0
+
+    def choose_new_direction(self):
+        direction = random.choice(["up", "down", "left", "right", "none"])
+
+        if direction == "left":
+            self.dx, self.dy = -1, 0
+            self.direction = "left"
+        elif direction == "right":
+            self.dx, self.dy = 1, 0
+            self.direction = "right"
+        elif direction == "up":
+            self.dx, self.dy = 0, -1
+            self.direction = "up"
+        elif direction == "down":
+            self.dx, self.dy = 0, 1
+            self.direction = "down"
+        else:
+            # Idle keeps current direction
+            self.dx, self.dy = 0, 0
+
+    def update(self, roaming, dt):
+        self.move_timer += dt
+
+        if roaming and self.move_timer >= self.move_interval:
+            self.move_timer = 0
+            self.move_interval = random.uniform(1.0, 3.0)
+            self.choose_new_direction()
+
+        # Movement
+        self.pos_x += self.dx * self.speed * dt
+        self.pos_y += self.dy * self.speed * dt
+        self.rect.x = int(self.pos_x)
+        self.rect.y = int(self.pos_y)
+
+        # Animation
+        if roaming and (self.dx != 0 or self.dy != 0):
+            self.frame_index += self.animation_speed * dt
             if self.frame_index >= len(self.animations[self.direction]):
                 self.frame_index = 0
         else:
@@ -134,6 +194,7 @@ class TileInstance:
 
 class Tiles:
     """Responsible for creating and managing tile instances"""
+
     def __init__(self, tileset_image, physics_world=None, has_physics=True, debug_collider=True):
         self.tileset = tileset_image
         self.physics_world = physics_world if has_physics else None
